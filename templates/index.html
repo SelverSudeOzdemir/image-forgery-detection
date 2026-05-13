@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Görüntü Sahteciliği Tespiti</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+    <div class="container">
+        <header class="header">
+            <h1>🔍 Görüntü Sahteciliği Tespiti</h1>
+            <p class="subtitle">Tek bir görüntüyü yükleyin — yapay zeka manipülasyon olup olmadığını analiz etsin</p>
+        </header>
+
+        <main class="main-content">
+            <!-- Upload -->
+            <section class="upload-section">
+                <h2>Görüntü Yükle</h2>
+                <p class="section-info">Analiz edilecek görüntüyü seçin (PNG, JPG, GIF, BMP)</p>
+                <div class="upload-box">
+                    <input type="file" id="fileInput" accept="image/*" class="file-input">
+                    <label for="fileInput" class="file-label">
+                        <span class="upload-icon">📁</span>
+                        <span class="upload-text">Resim Seç veya Sürükle</span>
+                    </label>
+                </div>
+                <div id="preview" class="preview-container hidden"></div>
+                <p id="filename" class="filename"></p>
+                <button id="analyzeBtn" class="analyze-btn" disabled>
+                    <span>⚡</span> Analiz Başlat
+                </button>
+            </section>
+
+            <!-- Loading -->
+            <div id="loading" class="loading hidden">
+                <div class="spinner"></div>
+                <p>Analiz yapılıyor... 6 farklı algoritma çalışıyor</p>
+                <div class="loading-steps">
+                    <span id="step1" class="step">⏳ SIFT, SURF, AKAZE, ORB</span>
+                    <span id="step2" class="step">⏳ YOLO v8 + ELA</span>
+                    <span id="step3" class="step">⏳ CNN + LSTM</span>
+                </div>
+            </div>
+
+            <!-- Results -->
+            <section id="results" class="results hidden">
+                <h2>📊 Analiz Sonuçları</h2>
+
+                <div id="finalDecision" class="final-decision"></div>
+
+                <div class="results-grid">
+                    <div class="result-card card-traditional">
+                        <h3>📐 Copy-Move Tespiti</h3>
+                        <p class="card-subtitle">SIFT, SURF, AKAZE, ORB</p>
+                        <div id="traditionalResults"></div>
+                    </div>
+                    <div class="result-card card-yolo">
+                        <h3>🤖 Manipülasyon Analizi</h3>
+                        <p class="card-subtitle">YOLO v8 + ELA + Gürültü</p>
+                        <div id="yoloResults"></div>
+                    </div>
+                    <div class="result-card card-ai">
+                        <h3>🧠 Derin Öğrenme</h3>
+                        <p class="card-subtitle">CNN + LSTM</p>
+                        <div id="aiResults"></div>
+                    </div>
+                </div>
+
+                <div class="detailed-section">
+                    <h3>📈 Detaylı Tablo</h3>
+                    <div id="detailedTable"></div>
+                </div>
+
+                <div class="action-buttons">
+                    <button id="downloadBtn" class="action-btn download-btn">📥 Raporu İndir</button>
+                    <button id="resetBtn" class="action-btn reset-btn">🔄 Yeni Analiz</button>
+                </div>
+            </section>
+
+            <!-- Error -->
+            <div id="errorBox" class="error-box hidden">
+                <p id="errorMsg"></p>
+                <button id="closeError" class="close-btn">Kapat</button>
+            </div>
+        </main>
+
+        <footer class="footer">
+            <p>🔐 Tüm analizler gizli olarak gerçekleştirilir | Görüntü Sahteciliği Tespiti Ar-Ge Projesi</p>
+        </footer>
+    </div>
+
+    <script src="{{ url_for('static', filename='js/script.js') }}"></script>
+</body>
+</html>

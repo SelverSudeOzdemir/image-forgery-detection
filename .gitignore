@@ -1,0 +1,24 @@
+# Virtual Environment
+venv/
+
+# YOLO model dosyasi
+yolov8n.pt
+
+# Yuklenen dosyalar
+static/uploads/*
+!static/uploads/.gitkeep
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+
+# Mac dosyalari
+.DS_Store
+
+# IDE
+.vscode/
+.idea/
+
+# Env dosyalari
+.env
