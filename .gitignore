@@ -1,8 +1,11 @@
 # Virtual Environment
 venv/
 
-# YOLO model dosyasi
+# Model dosyalari (buyuk dosyalar)
 yolov8n.pt
+models/casia_model.pt
+models/cnn_model.h5
+models/lstm_model.h5
 
 # Yuklenen dosyalar
 static/uploads/*
