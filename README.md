@@ -166,4 +166,4 @@ Pillow
 
 ## 👩‍💻 Developer
 
-Image Forgery Detection — R&D Project
+Selver Sude Özdemir - Software Engineer
