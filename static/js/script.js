@@ -1,14 +1,456 @@
-let selectedFile=null,uploadedFilename=null;
-const fileInput=document.getElementById("fileInput"),preview=document.getElementById("preview"),filenameEl=document.getElementById("filename"),analyzeBtn=document.getElementById("analyzeBtn"),loading=document.getElementById("loading"),results=document.getElementById("results"),errorBox=document.getElementById("errorBox"),errorMsg=document.getElementById("errorMsg");
-fileInput.addEventListener("change",e=>{const f=e.target.files[0];if(!f)return;if(!["image/png","image/jpeg","image/gif","image/bmp","image/webp"].includes(f.type)){showError("Yalnizca resim dosyalari desteklenir");return}selectedFile=f;const r=new FileReader;r.onload=ev=>{preview.innerHTML=`<img src="${ev.target.result}">`;preview.classList.remove("hidden");filenameEl.textContent=f.name;analyzeBtn.disabled=false};r.readAsDataURL(f)});
-analyzeBtn.addEventListener("click",async()=>{if(!selectedFile)return;loading.classList.remove("hidden");results.classList.add("hidden");errorBox.classList.add("hidden");analyzeBtn.disabled=true;try{const fd=new FormData;fd.append("file",selectedFile);const ur=await fetch("/api/upload",{method:"POST",body:fd});const ud=await ur.json();if(!ud.success){showError(ud.message);return}uploadedFilename=ud.filename;document.getElementById("step1").classList.add("done");document.getElementById("step1").textContent="✅ SIFT, SURF, AKAZE, ORB";const ar=await fetch("/api/analyze",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({filename:uploadedFilename})});const ad=await ar.json();document.getElementById("step2").classList.add("done");document.getElementById("step2").textContent="✅ YOLO v8 + ELA";document.getElementById("step3").classList.add("done");document.getElementById("step3").textContent="✅ CNN + LSTM";loading.classList.add("hidden");if(!ad.success){showError(ad.message);return}displayResults(ad.results);results.classList.remove("hidden")}catch(err){showError("Hata: "+err.message)}finally{analyzeBtn.disabled=false}});
-function displayResults(d){displayFinal(d.final_decision);displayTrad(d.traditional);displayYolo(d.yolo);displayAI(d.ai);displayTable(d)}
-function displayFinal(d){const el=document.getElementById("finalDecision");const f=d.is_fake;el.className=`final-decision ${f?"fake":""}`;el.innerHTML=`<div class="decision-title">${f?"⚠️ SAHTE GÖRÜNTÜ TESPİT EDİLDİ":"✅ ORİJİNAL GÖRÜNTÜ"}</div><div class="decision-grid"><div class="decision-item ${f?"fake":""}"><div class="decision-label">Karar</div><div class="decision-value">${f?"MANİPÜLE EDİLMİŞ":"ORİJİNAL"}</div></div><div class="decision-item"><div class="decision-label">Güven Puanı</div><div class="decision-value">${d.confidence.toFixed(1)}%</div></div><div class="decision-item"><div class="decision-label">Model Oylaması</div><div class="decision-value">${d.agreement}</div></div></div>`}
-function displayTrad(d){const el=document.getElementById("traditionalResults");let h="";["sift","surf","akaze","orb"].forEach(k=>{const r=d[k];h+=`<div class="result-item"><div class="result-item-value">${r.algorithm}: ${r.is_fake?"❌ Sahte":"✅ Orijinal"}</div><div class="result-item-label">Güven: ${r.confidence.toFixed(1)}% | Eşleşme: ${r.match_count} | Bölge: ${r.suspicious_regions}</div></div>`});const o=d.overall;h+=`<div class="result-item overall-item"><div class="result-item-value">Genel: ${o.is_fake?"❌ Sahte":"✅ Orijinal"} (${o.votes}/4)</div><div class="result-item-label">Güven: ${o.confidence.toFixed(1)}%</div></div>`;el.innerHTML=h}
-function displayYolo(d){const el=document.getElementById("yoloResults");let h=`<div class="result-item"><div class="result-item-value">${d.is_fake?"❌ Sahte":"✅ Orijinal"}</div><div class="result-item-label">Güven: ${d.confidence.toFixed(1)}%</div></div>`;if(d.ela)h+=`<div class="result-item"><div class="result-item-label">ELA Skoru</div><div class="result-item-value">${d.ela.manipulation_score.toFixed(1)}%</div></div>`;if(d.noise)h+=`<div class="result-item"><div class="result-item-label">Gürültü Varyasyonu</div><div class="result-item-value">${d.noise.noise_variation.toFixed(3)}</div></div>`;if(d.quality)h+=`<div class="result-item"><div class="result-item-label">Kalite</div><div class="result-item-value">${d.quality.quality_score.toFixed(1)}%</div></div>`;el.innerHTML=h}
-function displayAI(d){const el=document.getElementById("aiResults");let h="";if(d.cnn){const c=d.cnn;h+=`<div class="result-item"><div class="result-item-value">CNN: ${c.is_fake?"❌ Sahte":"✅ Orijinal"}</div><div class="result-item-label">Güven: ${c.confidence.toFixed(1)}%</div></div>`}if(d.lstm){const l=d.lstm;h+=`<div class="result-item"><div class="result-item-value">LSTM: ${l.is_fake?"❌ Sahte":"✅ Orijinal"}</div><div class="result-item-label">Güven: ${l.confidence.toFixed(1)}%</div></div>`}if(d.overall){const o=d.overall;h+=`<div class="result-item overall-item"><div class="result-item-value">Genel: ${o.is_fake?"❌ Sahte":"✅ Orijinal"} (${o.votes}/2)</div><div class="result-item-label">Güven: ${o.confidence.toFixed(1)}%</div></div>`}el.innerHTML=h}
-function displayTable(d){const rows=[{n:"SIFT",c:d.traditional.sift.confidence,f:d.traditional.sift.is_fake},{n:"SURF",c:d.traditional.surf.confidence,f:d.traditional.surf.is_fake},{n:"AKAZE",c:d.traditional.akaze.confidence,f:d.traditional.akaze.is_fake},{n:"ORB",c:d.traditional.orb.confidence,f:d.traditional.orb.is_fake},{n:"YOLO v8 + ELA",c:d.yolo.confidence,f:d.yolo.is_fake},{n:"CNN",c:d.ai.cnn.confidence,f:d.ai.cnn.is_fake},{n:"LSTM",c:d.ai.lstm.confidence,f:d.ai.lstm.is_fake}];let h=`<table class="analysis-table"><thead><tr><th>Algoritma</th><th>Güven(%)</th><th>Karar</th></tr></thead><tbody>`;rows.forEach(r=>{h+=`<tr><td><strong>${r.n}</strong></td><td>${r.c.toFixed(1)}%</td><td>${r.f?"❌ Sahte":"✅ Orijinal"}</td></tr>`});h+=`</tbody></table>`;document.getElementById("detailedTable").innerHTML=h}
-function showError(m){errorMsg.textContent=m;errorBox.classList.remove("hidden");loading.classList.add("hidden");analyzeBtn.disabled=false}
-document.getElementById("closeError").addEventListener("click",()=>errorBox.classList.add("hidden"));
-document.getElementById("resetBtn").addEventListener("click",()=>{if(uploadedFilename)fetch("/api/cleanup",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({filename:uploadedFilename})});selectedFile=null;uploadedFilename=null;fileInput.value="";preview.innerHTML="";preview.classList.add("hidden");filenameEl.textContent="";results.classList.add("hidden");analyzeBtn.disabled=true;["step1","step2","step3"].forEach(id=>{const el=document.getElementById(id);el.classList.remove("done");el.textContent=el.textContent.replace("✅","⏳")})});
-document.getElementById("downloadBtn").addEventListener("click",()=>{const c=document.querySelector(".results").innerHTML;const html=`<!DOCTYPE html><html lang="tr"><head><meta charset="UTF-8"><title>Sahtecilik Raporu</title><style>body{font-family:Arial;margin:20px;background:#e2e2e2;color:#120907}.c{max-width:900px;margin:0 auto;background:white;padding:30px;border-radius:12px}h1{border-bottom:3px solid #ffd473}table{width:100%;border-collapse:collapse}th{background:#120907;color:white;padding:10px}td{padding:10px;border-bottom:1px solid #ddd}</style></head><body><div class="c"><h1>🔍 Rapor</h1>${c}<p style="color:#7d7575;margin-top:20px">${new Date().toLocaleString("tr-TR")}</p></div></body></html>`;const b=new Blob([html],{type:"text/html"});const a=document.createElement("a");a.href=URL.createObjectURL(b);a.download=`Rapor_${Date.now()}.html`;a.click()});
+// === STATE ===
+let selectedFile = null,
+  uploadedFilename = null;
+
+// === ELEMENTS ===
+const fileInput = document.getElementById("fileInput");
+const dropZone = document.getElementById("dropZone");
+const preview = document.getElementById("preview");
+const previewImg = document.getElementById("previewImg");
+const previewName = document.getElementById("previewName");
+const previewSize = document.getElementById("previewSize");
+const analyzeBtn = document.getElementById("analyzeBtn");
+const loading = document.getElementById("loading");
+const results = document.getElementById("results");
+const errorBox = document.getElementById("errorBox");
+const errorMsg = document.getElementById("errorMsg");
+
+// === DRAG & DROP ===
+dropZone.addEventListener("dragover", (e) => {
+  e.preventDefault();
+  dropZone.classList.add("drag-over");
+});
+dropZone.addEventListener("dragleave", () =>
+  dropZone.classList.remove("drag-over")
+);
+dropZone.addEventListener("drop", (e) => {
+  e.preventDefault();
+  dropZone.classList.remove("drag-over");
+  const f = e.dataTransfer.files[0];
+  if (f) handleFile(f);
+});
+dropZone.addEventListener("click", () => fileInput.click());
+
+fileInput.addEventListener("change", (e) => {
+  const f = e.target.files[0];
+  if (f) handleFile(f);
+});
+
+function handleFile(f) {
+  const allowed = [
+    "image/png",
+    "image/jpeg",
+    "image/gif",
+    "image/bmp",
+    "image/webp",
+    "image/tiff",
+  ];
+  if (
+    !allowed.includes(f.type) &&
+    !f.name.match(/\.(tif|tiff|gif|bmp|jpg|jpeg|png|webp)$/i)
+  ) {
+    showError(
+      "Desteklenmeyen format. PNG, JPG, GIF, BMP, TIFF veya WEBP seçin."
+    );
+    return;
+  }
+  selectedFile = f;
+  const reader = new FileReader();
+  reader.onload = (ev) => {
+    previewImg.src = ev.target.result;
+    previewName.textContent = f.name;
+    previewSize.textContent = formatSize(f.size);
+    preview.classList.remove("hidden");
+    analyzeBtn.disabled = false;
+    results.classList.add("hidden");
+    errorBox.classList.add("hidden");
+  };
+  reader.readAsDataURL(f);
+}
+
+function formatSize(bytes) {
+  if (bytes < 1024) return bytes + " B";
+  if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + " KB";
+  return (bytes / (1024 * 1024)).toFixed(1) + " MB";
+}
+
+// === ANALYZE ===
+analyzeBtn.addEventListener("click", async () => {
+  if (!selectedFile) return;
+
+  results.classList.add("hidden");
+  errorBox.classList.add("hidden");
+  loading.classList.remove("hidden");
+  analyzeBtn.disabled = true;
+
+  // Reset algo steps
+  ["alg1", "alg2", "alg3"].forEach((id) => {
+    const el = document.getElementById(id);
+    el.classList.remove("active", "done");
+  });
+  ["s1", "s2", "s3"].forEach((id) => {
+    document.getElementById(id).textContent = "⏳";
+  });
+
+  try {
+    // Upload
+    const fd = new FormData();
+    fd.append("file", selectedFile);
+    const ur = await fetch("/api/upload", { method: "POST", body: fd });
+    const ud = await ur.json();
+    if (!ud.success) {
+      showError(ud.message);
+      return;
+    }
+    uploadedFilename = ud.filename;
+
+    // Trigger animation steps
+    document.getElementById("alg1").classList.add("active");
+    setTimeout(() => {
+      document.getElementById("alg1").classList.add("done");
+      document.getElementById("s1").textContent = "✅";
+      document.getElementById("alg2").classList.add("active");
+    }, 600);
+    setTimeout(() => {
+      document.getElementById("alg2").classList.add("done");
+      document.getElementById("s2").textContent = "✅";
+      document.getElementById("alg3").classList.add("active");
+    }, 1400);
+
+    // Analyze
+    const ar = await fetch("/api/analyze", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ filename: uploadedFilename }),
+    });
+    const ad = await ar.json();
+
+    document.getElementById("alg3").classList.add("done");
+    document.getElementById("s3").textContent = "✅";
+
+    loading.classList.add("hidden");
+    if (!ad.success) {
+      showError(ad.message);
+      return;
+    }
+
+    displayResults(ad.results);
+    results.classList.remove("hidden");
+    results.scrollIntoView({ behavior: "smooth", block: "start" });
+  } catch (err) {
+    showError("Bağlantı hatası: " + err.message);
+  } finally {
+    analyzeBtn.disabled = false;
+  }
+});
+
+// === DISPLAY RESULTS ===
+function displayResults(d) {
+  displayVerdict(d.final_decision);
+  displayVotes(d.final_decision.votes);
+  displayTraditional(d.traditional);
+  displayYolo(d.yolo);
+  displayAI(d.ai);
+  displayTable(d);
+}
+
+function displayVerdict(d) {
+  const block = document.querySelector(".verdict-block");
+  const mainEl = document.getElementById("verdictMain");
+  const agreeEl = document.getElementById("verdictAgreement");
+  const ringFill = document.getElementById("ringFill");
+  const confVal = document.getElementById("confValue");
+
+  const isFake = d.is_fake;
+  block.className = "verdict-block " + (isFake ? "is-fake" : "is-real");
+  mainEl.textContent = isFake ? "MANİPÜLE EDİLMİŞ" : "ORİJİNAL";
+  mainEl.className = "verdict-main " + (isFake ? "fake" : "real");
+  agreeEl.textContent = d.agreement;
+
+  // Animate ring
+  const pct = d.confidence;
+  const circumference = 314;
+  const offset = circumference - (pct / 100) * circumference;
+  setTimeout(() => {
+    ringFill.style.strokeDashoffset = offset;
+  }, 100);
+
+  // Animate counter
+  let start = 0;
+  const target = Math.round(pct);
+  const step = Math.ceil(target / 40);
+  const timer = setInterval(() => {
+    start = Math.min(start + step, target);
+    confVal.textContent = start;
+    if (start >= target) clearInterval(timer);
+  }, 25);
+}
+
+function displayVotes(votes) {
+  const pills = {
+    voteTraditional: votes.traditional,
+    voteYolo: votes.yolo,
+    voteAI: votes.ai,
+  };
+  for (const [id, isFake] of Object.entries(pills)) {
+    const el = document.getElementById(id);
+    el.className = "vote-pill " + (isFake ? "fake" : "real");
+    el.querySelector(".vote-icon").textContent = isFake ? "✗" : "✓";
+  }
+}
+
+function metricRow(name, valueHTML, extraText = "", cls = "") {
+  return `<div class="metric-row ${cls}">
+        <div class="metric-name">${name}</div>
+        <div class="metric-val ${cls}">${valueHTML}</div>
+        ${extraText ? `<div class="metric-extra">${extraText}</div>` : ""}
+    </div>`;
+}
+
+function fakeClass(isFake) {
+  return isFake ? "fake" : "real";
+}
+function fakeLabel(isFake) {
+  return isFake ? "✗ SAHTE" : "✓ ORİJİNAL";
+}
+
+function displayTraditional(d) {
+  const el = document.getElementById("tradRows");
+  let html = "";
+  ["sift", "surf", "akaze", "orb"].forEach((k) => {
+    const r = d[k];
+    const fc = fakeClass(r.is_fake);
+    html += metricRow(
+      r.algorithm,
+      fakeLabel(r.is_fake),
+      `Güven: ${r.confidence.toFixed(1)}%  Eşleşme: ${r.match_count}  Bölge: ${
+        r.suspicious_regions
+      }`,
+      fc
+    );
+  });
+  const o = d.overall;
+  html += metricRow(
+    "GENEL KARAR",
+    fakeLabel(o.is_fake),
+    `Oy: ${o.votes}/4  Güven: ${o.confidence.toFixed(1)}%`,
+    "overall"
+  );
+  el.innerHTML = html;
+}
+
+function displayYolo(d) {
+  const el = document.getElementById("yoloRows");
+  const fc = fakeClass(d.is_fake);
+  let html = metricRow(
+    "YOLO CASIA",
+    fakeLabel(d.is_fake),
+    `Sınıf: ${d.predicted_label} (${d.yolo_confidence?.toFixed(1)}%)`,
+    fc
+  );
+  if (d.ela)
+    html += metricRow(
+      "ELA Skoru",
+      `${d.ela.manipulation_score.toFixed(1)}%`,
+      `Blok Var: ${d.ela.block_variance?.toFixed(3)}`,
+      d.ela.is_suspicious ? "fake" : "real"
+    );
+  if (d.noise)
+    html += metricRow(
+      "Gürültü Var.",
+      d.noise.noise_variation.toFixed(3),
+      `Ort: ${d.noise.noise_mean?.toFixed(3)}`,
+      d.noise.is_suspicious ? "fake" : "real"
+    );
+  if (d.quality)
+    html += metricRow(
+      "Görüntü Kalitesi",
+      `${d.quality.quality_score.toFixed(1)}%`,
+      `Keskinlik: ${d.quality.sharpness?.toFixed(
+        1
+      )}  Kontrast: ${d.quality.contrast?.toFixed(1)}`
+    );
+  el.innerHTML = html;
+}
+
+function displayAI(d) {
+  const el = document.getElementById("aiRows");
+  let html = "";
+  if (d.cnn) {
+    const fc = fakeClass(d.cnn.is_fake);
+    html += metricRow(
+      "CNN",
+      fakeLabel(d.cnn.is_fake),
+      `Güven: ${d.cnn.confidence.toFixed(
+        1
+      )}%  Kenar: ${d.cnn.edge_inconsistency?.toFixed(2)}`,
+      fc
+    );
+  }
+  if (d.lstm) {
+    const fc = fakeClass(d.lstm.is_fake);
+    html += metricRow(
+      "LSTM",
+      fakeLabel(d.lstm.is_fake),
+      `Güven: ${d.lstm.confidence.toFixed(
+        1
+      )}%  Ghost: ${d.lstm.ghost_variation?.toFixed(3)}`,
+      fc
+    );
+  }
+  if (d.overall) {
+    html += metricRow(
+      "GENEL KARAR",
+      fakeLabel(d.overall.is_fake),
+      `Oy: ${d.overall.votes}/2  Güven: ${d.overall.confidence.toFixed(1)}%`,
+      "overall"
+    );
+  }
+  el.innerHTML = html;
+}
+
+function displayTable(d) {
+  const rows = [
+    {
+      n: "SIFT",
+      c: d.traditional.sift.confidence,
+      f: d.traditional.sift.is_fake,
+      detail: `${d.traditional.sift.match_count} eşleşme`,
+    },
+    {
+      n: "SURF",
+      c: d.traditional.surf.confidence,
+      f: d.traditional.surf.is_fake,
+      detail: `${d.traditional.surf.match_count} eşleşme`,
+    },
+    {
+      n: "AKAZE",
+      c: d.traditional.akaze.confidence,
+      f: d.traditional.akaze.is_fake,
+      detail: `${d.traditional.akaze.match_count} eşleşme`,
+    },
+    {
+      n: "ORB",
+      c: d.traditional.orb.confidence,
+      f: d.traditional.orb.is_fake,
+      detail: `${d.traditional.orb.match_count} eşleşme`,
+    },
+    {
+      n: "YOLOv8 CASIA",
+      c: d.yolo.confidence,
+      f: d.yolo.is_fake,
+      detail: `Sınıf: ${d.yolo.predicted_label}`,
+    },
+    {
+      n: "ELA",
+      c: d.yolo.ela?.manipulation_score ?? 0,
+      f: d.yolo.ela?.is_suspicious ?? false,
+      detail: `Blok Var: ${d.yolo.ela?.block_variance?.toFixed(3) ?? "-"}`,
+    },
+    {
+      n: "CNN",
+      c: d.ai.cnn?.confidence ?? 0,
+      f: d.ai.cnn?.is_fake ?? false,
+      detail: `Skor: ${d.ai.cnn?.raw_score?.toFixed(4) ?? "-"}`,
+    },
+    {
+      n: "LSTM",
+      c: d.ai.lstm?.confidence ?? 0,
+      f: d.ai.lstm?.is_fake ?? false,
+      detail: `Skor: ${d.ai.lstm?.raw_score?.toFixed(4) ?? "-"}`,
+    },
+  ];
+
+  const body = document.getElementById("tableBody");
+  body.innerHTML = rows
+    .map(
+      (r) => `
+        <tr>
+            <td class="td-algo">${r.n}</td>
+            <td class="td-conf">${r.c.toFixed(1)}</td>
+            <td class="td-decision ${r.f ? "fake" : "real"}">${
+        r.f ? "✗ SAHTE" : "✓ ORİJİNAL"
+      }</td>
+            <td class="td-detail">${r.detail}</td>
+        </tr>
+    `
+    )
+    .join("");
+}
+
+// === ERROR ===
+function showError(msg) {
+  errorMsg.textContent = msg;
+  errorBox.classList.remove("hidden");
+  loading.classList.add("hidden");
+  analyzeBtn.disabled = false;
+}
+document
+  .getElementById("closeError")
+  .addEventListener("click", () => errorBox.classList.add("hidden"));
+
+// === RESET ===
+document.getElementById("resetBtn").addEventListener("click", () => {
+  if (uploadedFilename) {
+    fetch("/api/cleanup", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ filename: uploadedFilename }),
+    });
+  }
+  selectedFile = null;
+  uploadedFilename = null;
+  fileInput.value = "";
+  previewImg.src = "";
+  preview.classList.add("hidden");
+  results.classList.add("hidden");
+  analyzeBtn.disabled = true;
+  window.scrollTo({ top: 0, behavior: "smooth" });
+});
+
+// === DOWNLOAD ===
+document.getElementById("downloadBtn").addEventListener("click", () => {
+  const stamp = new Date().toLocaleString("tr-TR");
+  const tableEl = document.getElementById("detailTable")?.outerHTML ?? "";
+  const verdictText = document.getElementById("verdictMain")?.textContent ?? "";
+  const conf = document.getElementById("confValue")?.textContent ?? "";
+  const agreement =
+    document.getElementById("verdictAgreement")?.textContent ?? "";
+
+  const html = `<!DOCTYPE html>
+<html lang="tr"><head><meta charset="UTF-8">
+<title>ForensicAI Raporu — ${stamp}</title>
+<style>
+body{font-family:'Segoe UI',sans-serif;background:#0b0c0e;color:#e8eaed;margin:0;padding:40px}
+.wrap{max-width:900px;margin:0 auto}
+h1{font-size:1.6rem;border-bottom:2px solid #c8f542;padding-bottom:12px;margin-bottom:24px;color:#c8f542}
+.verdict{padding:24px;border:1px solid;border-radius:8px;margin-bottom:24px}
+.verdict.fake{border-color:#ff4d6d;background:rgba(255,77,109,0.08)}
+.verdict.real{border-color:#3dffa0;background:rgba(61,255,160,0.08)}
+.v-main{font-size:2rem;font-weight:800;margin-bottom:8px}
+.v-main.fake{color:#ff4d6d}.v-main.real{color:#3dffa0}
+.v-meta{font-size:0.8rem;color:#6b7280;font-family:monospace}
+table{width:100%;border-collapse:collapse;margin-top:24px}
+th{background:#181b20;padding:10px 16px;text-align:left;font-size:0.75rem;letter-spacing:0.06em;color:#6b7280;border-bottom:1px solid rgba(255,255,255,0.07)}
+td{padding:10px 16px;border-bottom:1px solid rgba(255,255,255,0.05);font-size:0.85rem}
+.fake{color:#ff4d6d}.real{color:#3dffa0}
+.footer{margin-top:32px;font-size:0.72rem;color:#374151;font-family:monospace;border-top:1px solid rgba(255,255,255,0.07);padding-top:16px}
+</style>
+</head><body><div class="wrap">
+<h1>[FORENSICAI] Görüntü Analiz Raporu</h1>
+<div class="verdict ${verdictText.includes("MANİPÜLE") ? "fake" : "real"}">
+<div class="v-main ${
+    verdictText.includes("MANİPÜLE") ? "fake" : "real"
+  }">${verdictText}</div>
+<div class="v-meta">Güven: ${conf}% · ${agreement}</div>
+</div>
+${tableEl}
+<div class="footer">ForensicAI Ar-Ge Projesi · Rapor Tarihi: ${stamp}</div>
+</div></body></html>`;
+
+  const blob = new Blob([html], { type: "text/html;charset=utf-8" });
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = `ForensicAI_Rapor_${Date.now()}.html`;
+  a.click();
+});

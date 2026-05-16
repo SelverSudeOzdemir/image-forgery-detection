@@ -3,92 +3,228 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Görüntü Sahteciliği Tespiti</title>
+    <title>ForensicAI — Görüntü Sahteciliği Tespiti</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Syne:wght@400;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
 </head>
 <body>
-    <div class="container">
-        <header class="header">
-            <h1>🔍 Görüntü Sahteciliği Tespiti</h1>
-            <p class="subtitle">Tek bir görüntüyü yükleyin — yapay zeka manipülasyon olup olmadığını analiz etsin</p>
-        </header>
+    <div class="noise-overlay"></div>
 
-        <main class="main-content">
-            <!-- Upload -->
-            <section class="upload-section">
-                <h2>Görüntü Yükle</h2>
-                <p class="section-info">Analiz edilecek görüntüyü seçin (PNG, JPG, GIF, BMP)</p>
-                <div class="upload-box">
-                    <input type="file" id="fileInput" accept="image/*" class="file-input">
-                    <label for="fileInput" class="file-label">
-                        <span class="upload-icon">📁</span>
-                        <span class="upload-text">Resim Seç veya Sürükle</span>
-                    </label>
+    <!-- Header -->
+    <header class="site-header">
+        <div class="header-inner">
+            <div class="logo">
+                <span class="logo-bracket">[</span>
+                <span class="logo-text">FORENSIC<em>AI</em></span>
+                <span class="logo-bracket">]</span>
+            </div>
+            <div class="header-meta">
+                <span class="badge">AR-GE PROJESİ</span>
+                <span class="badge badge-alt">v2.0</span>
+            </div>
+        </div>
+        <div class="header-tagline">Görüntü Manipülasyon Tespit Sistemi — SIFT · SURF · AKAZE · ORB · YOLOv8 · CNN · LSTM</div>
+    </header>
+
+    <main class="main">
+        <!-- Upload Panel -->
+        <section class="panel upload-panel" id="uploadPanel">
+            <div class="panel-label">01 / YÜKLE</div>
+            <h2 class="panel-title">Görüntüyü Seçin</h2>
+            <p class="panel-desc">PNG · JPG · GIF · BMP · TIFF · WEBP formatları desteklenir</p>
+
+            <div class="drop-zone" id="dropZone">
+                <input type="file" id="fileInput" accept="image/*" class="file-input">
+                <div class="drop-inner">
+                    <div class="drop-icon">
+                        <svg width="48" height="48" viewBox="0 0 48 48" fill="none">
+                            <rect x="4" y="4" width="40" height="40" rx="4" stroke="currentColor" stroke-width="2" stroke-dasharray="6 3"/>
+                            <path d="M24 32V16M16 24l8-8 8 8" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+                        </svg>
+                    </div>
+                    <p class="drop-text">Sürükle & Bırak veya <label for="fileInput" class="drop-link">dosya seç</label></p>
+                    <p class="drop-hint">Maks. 50MB</p>
                 </div>
-                <div id="preview" class="preview-container hidden"></div>
-                <p id="filename" class="filename"></p>
-                <button id="analyzeBtn" class="analyze-btn" disabled>
-                    <span>⚡</span> Analiz Başlat
+            </div>
+
+            <div id="preview" class="preview-wrapper hidden">
+                <div class="preview-header">
+                    <span id="previewName" class="preview-name"></span>
+                    <span id="previewSize" class="preview-size"></span>
+                </div>
+                <div class="preview-img-wrap">
+                    <img id="previewImg" src="" alt="Önizleme">
+                    <div class="preview-scan-line"></div>
+                </div>
+            </div>
+
+            <button id="analyzeBtn" class="cta-btn" disabled>
+                <span class="cta-icon">▶</span>
+                <span class="cta-text">ANALİZ BAŞLAT</span>
+                <span class="cta-sub">7 algoritma çalışacak</span>
+            </button>
+        </section>
+
+        <!-- Loading -->
+        <div id="loading" class="loading-panel hidden">
+            <div class="scan-header">
+                <div class="scan-pulse"></div>
+                <span>TARAMA YAPILIYOR</span>
+            </div>
+            <div class="algo-list">
+                <div class="algo-item" id="alg1">
+                    <div class="algo-bar"></div>
+                    <span class="algo-name">Copy-Move Tespiti</span>
+                    <span class="algo-detail">SIFT · SURF · AKAZE · ORB</span>
+                    <span class="algo-status" id="s1">⏳</span>
+                </div>
+                <div class="algo-item" id="alg2">
+                    <div class="algo-bar"></div>
+                    <span class="algo-name">Manipülasyon Analizi</span>
+                    <span class="algo-detail">YOLOv8 CASIA · ELA · Noise</span>
+                    <span class="algo-status" id="s2">⏳</span>
+                </div>
+                <div class="algo-item" id="alg3">
+                    <div class="algo-bar"></div>
+                    <span class="algo-name">Derin Öğrenme</span>
+                    <span class="algo-detail">CNN · LSTM · DCT</span>
+                    <span class="algo-status" id="s3">⏳</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Results -->
+        <section id="results" class="results-panel hidden">
+
+            <!-- Verdict -->
+            <div id="verdict" class="verdict-block">
+                <div class="verdict-left">
+                    <div class="verdict-label">KARAR</div>
+                    <div class="verdict-main" id="verdictMain"></div>
+                    <div class="verdict-agreement" id="verdictAgreement"></div>
+                </div>
+                <div class="verdict-right">
+                    <div class="confidence-ring">
+                        <svg viewBox="0 0 120 120">
+                            <circle cx="60" cy="60" r="50" class="ring-bg"/>
+                            <circle cx="60" cy="60" r="50" class="ring-fill" id="ringFill"/>
+                        </svg>
+                        <div class="confidence-label">
+                            <span id="confValue">0</span>
+                            <small>%</small>
+                        </div>
+                    </div>
+                    <div class="conf-text">Güven Skoru</div>
+                </div>
+            </div>
+
+            <!-- Voting Pills -->
+            <div class="vote-strip">
+                <div class="vote-pill" id="voteTraditional">
+                    <span class="vote-icon"></span>
+                    <span class="vote-name">Geleneksel</span>
+                </div>
+                <div class="vote-pill" id="voteYolo">
+                    <span class="vote-icon"></span>
+                    <span class="vote-name">YOLO + ELA</span>
+                </div>
+                <div class="vote-pill" id="voteAI">
+                    <span class="vote-icon"></span>
+                    <span class="vote-name">AI (CNN/LSTM)</span>
+                </div>
+            </div>
+
+            <!-- Three columns -->
+            <div class="results-cols">
+
+                <!-- Traditional -->
+                <div class="res-card">
+                    <div class="res-card-head">
+                        <div class="res-num">01</div>
+                        <div>
+                            <div class="res-title">Copy-Move Tespiti</div>
+                            <div class="res-sub">SIFT · SURF · AKAZE · ORB</div>
+                        </div>
+                    </div>
+                    <div id="tradRows" class="metric-rows"></div>
+                </div>
+
+                <!-- YOLO -->
+                <div class="res-card">
+                    <div class="res-card-head">
+                        <div class="res-num">02</div>
+                        <div>
+                            <div class="res-title">Manipülasyon Analizi</div>
+                            <div class="res-sub">YOLOv8 · ELA · Noise</div>
+                        </div>
+                    </div>
+                    <div id="yoloRows" class="metric-rows"></div>
+                </div>
+
+                <!-- AI -->
+                <div class="res-card">
+                    <div class="res-card-head">
+                        <div class="res-num">03</div>
+                        <div>
+                            <div class="res-title">Derin Öğrenme</div>
+                            <div class="res-sub">CNN · LSTM</div>
+                        </div>
+                    </div>
+                    <div id="aiRows" class="metric-rows"></div>
+                </div>
+            </div>
+
+            <!-- Table -->
+            <div class="table-section">
+                <div class="table-header">
+                    <span>DETAYLI TABLO</span>
+                    <span class="table-sub">Tüm Algoritma Sonuçları</span>
+                </div>
+                <div class="table-wrap">
+                    <table id="detailTable">
+                        <thead>
+                            <tr>
+                                <th>Algoritma</th>
+                                <th>Güven (%)</th>
+                                <th>Karar</th>
+                                <th>Detay</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tableBody"></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Actions -->
+            <div class="action-row">
+                <button id="downloadBtn" class="act-btn act-dl">
+                    <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M8 2v8M5 7l3 3 3-3M3 13h10" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                    Raporu İndir
                 </button>
-            </section>
-
-            <!-- Loading -->
-            <div id="loading" class="loading hidden">
-                <div class="spinner"></div>
-                <p>Analiz yapılıyor... 6 farklı algoritma çalışıyor</p>
-                <div class="loading-steps">
-                    <span id="step1" class="step">⏳ SIFT, SURF, AKAZE, ORB</span>
-                    <span id="step2" class="step">⏳ YOLO v8 + ELA</span>
-                    <span id="step3" class="step">⏳ CNN + LSTM</span>
-                </div>
+                <button id="resetBtn" class="act-btn act-reset">
+                    <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M3 8a5 5 0 1 0 1-3" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="M1 5h3V2" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                    Yeni Analiz
+                </button>
             </div>
+        </section>
 
-            <!-- Results -->
-            <section id="results" class="results hidden">
-                <h2>📊 Analiz Sonuçları</h2>
-
-                <div id="finalDecision" class="final-decision"></div>
-
-                <div class="results-grid">
-                    <div class="result-card card-traditional">
-                        <h3>📐 Copy-Move Tespiti</h3>
-                        <p class="card-subtitle">SIFT, SURF, AKAZE, ORB</p>
-                        <div id="traditionalResults"></div>
-                    </div>
-                    <div class="result-card card-yolo">
-                        <h3>🤖 Manipülasyon Analizi</h3>
-                        <p class="card-subtitle">YOLO v8 + ELA + Gürültü</p>
-                        <div id="yoloResults"></div>
-                    </div>
-                    <div class="result-card card-ai">
-                        <h3>🧠 Derin Öğrenme</h3>
-                        <p class="card-subtitle">CNN + LSTM</p>
-                        <div id="aiResults"></div>
-                    </div>
-                </div>
-
-                <div class="detailed-section">
-                    <h3>📈 Detaylı Tablo</h3>
-                    <div id="detailedTable"></div>
-                </div>
-
-                <div class="action-buttons">
-                    <button id="downloadBtn" class="action-btn download-btn">📥 Raporu İndir</button>
-                    <button id="resetBtn" class="action-btn reset-btn">🔄 Yeni Analiz</button>
-                </div>
-            </section>
-
-            <!-- Error -->
-            <div id="errorBox" class="error-box hidden">
+        <!-- Error -->
+        <div id="errorBox" class="error-panel hidden">
+            <div class="error-inner">
+                <span class="error-icon">!</span>
                 <p id="errorMsg"></p>
-                <button id="closeError" class="close-btn">Kapat</button>
+                <button id="closeError">Kapat</button>
             </div>
-        </main>
+        </div>
+    </main>
 
-        <footer class="footer">
-            <p>🔐 Tüm analizler gizli olarak gerçekleştirilir | Görüntü Sahteciliği Tespiti Ar-Ge Projesi</p>
-        </footer>
-    </div>
+    <footer class="site-footer">
+        <span>ForensicAI Görüntü Sahteciliği Tespiti Ar-Ge Projesi</span>
+        <span class="footer-sep">|</span>
+        <span>Tüm analizler gizli olarak gerçekleştirilir</span>
+    </footer>
 
     <script src="{{ url_for('static', filename='js/script.js') }}"></script>
 </body>
